@@ -1,101 +1,166 @@
-import Image from "next/image";
+'use client'
 
-export default function Home() {
+import React, { useState, useEffect } from 'react'
+import io from 'socket.io-client'
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { toast, ToastContainer } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
+import Head from 'next/head'
+
+const socket = io()
+
+export default function Page() {
+  const [isSorting, setIsSorting] = useState(false)
+  const [metrics, setMetrics] = useState({
+    objectsSorted: { red: 0, blue: 0, green: 0, yellow: 0 },
+    accuracy: 0,
+    sortingRate: 0,
+    armPosition: 0
+  })
+  const [cameraFeed, setCameraFeed] = useState('/placeholder-image.svg')
+  const [cameraError, setCameraError] = useState(false)
+
+  useEffect(() => {
+    socket.on('sortingStatus', (data) => setIsSorting(data.isSorting))
+    socket.on('performanceUpdate', setMetrics)
+    socket.on('error', (error) => {
+      toast.error(error.message)
+    })
+
+    const fetchCameraFeed = async () => {
+      try {
+        const response = await fetch(`http://localhost:5001/video_feed?t=${Date.now()}`)
+        if (response.ok) {
+          setCameraFeed(`http://localhost:5001/video_feed?t=${Date.now()}`)
+          setCameraError(false)
+        } else {
+          throw new Error('Failed to fetch camera feed')
+        }
+      } catch (error) {
+        console.error('Camera feed error:', error)
+        setCameraError(true)
+        toast.error('Failed to fetch camera feed')
+      }
+    }
+
+    const intervalId = setInterval(fetchCameraFeed, 1000)
+
+    return () => {
+      socket.off('sortingStatus')
+      socket.off('performanceUpdate')
+      socket.off('error')
+      clearInterval(intervalId)
+    }
+  }, [])
+
+  const handleStart = async () => {
+    try {
+      const response = await fetch('/api/start', { method: 'POST' })
+      if (response.ok) {
+        setIsSorting(true)
+        toast.success('Sorting started successfully')
+      } else {
+        throw new Error('Failed to start sorting')
+      }
+    } catch (error) {
+      console.error('Failed to start sorting', error)
+      toast.error('Failed to start sorting')
+    }
+  }
+
+  const handleStop = async () => {
+    try {
+      const response = await fetch('/api/stop', { method: 'POST' })
+      if (response.ok) {
+        setIsSorting(false)
+        toast.success('Sorting stopped successfully')
+      } else {
+        throw new Error('Failed to stop sorting')
+      }
+    } catch (error) {
+      console.error('Failed to stop sorting', error)
+      toast.error('Failed to stop sorting')
+    }
+  }
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <>
+    <Head>
+      <title>Robotic Arm Dashboard</title>
+    </Head>
+    <div className="container mx-auto p-4">
+      <ToastContainer />
+      <h1 className="text-3xl font-bold mb-6">Robotic Sorting Arm Dashboard</h1>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Live Camera Feed</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {cameraError ? (
+              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                <strong className="font-bold">Camera Error!</strong>
+                <span className="block sm:inline"> Unable to access the camera feed.</span>
+              </div>
+            ) : (
+              <img
+                src={cameraFeed} //"http://localhost:5001/video_feed"
+                alt="Camera Feed"
+                className="w-full h-auto"
+              />
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+            )}
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle>Controls</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex space-x-4">
+              <Button onClick={handleStart} disabled={isSorting}>
+                Start Sorting
+              </Button>
+              <Button onClick={handleStop} disabled={!isSorting} variant="destructive">
+                Stop Sorting
+              </Button>
+            </div>
+            <p className="mt-4">Status: {isSorting ? 'Sorting' : 'Idle'}</p>
+            <p className="mt-2">Arm Position: {metrics.armPosition}°</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Performance Metrics</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <h3 className="font-semibold">Objects Detected</h3>
+              <ul>
+                <li>Red: {metrics.objectsSorted.red}</li>
+                <li>Blue: {metrics.objectsSorted.blue}</li>
+                <li>Green: {metrics.objectsSorted.green}</li>
+                <li>Yellow: {metrics.objectsSorted.yellow}</li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="font-semibold">Accuracy</h3>
+              <p className="text-2xl">{metrics.accuracy.toFixed(2)}%</p>
+            </div>
+            <div>
+              <h3 className="font-semibold">Sorting Rate</h3>
+              <p className="text-2xl">{metrics.sortingRate.toFixed(2)} objects/min</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
-  );
+    </>
+  )
 }
