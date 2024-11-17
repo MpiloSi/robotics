@@ -1,4 +1,4 @@
-const ESP32_IP = 'http://192.168.1.100' // Replace with your ESP32's IP address
+const ESP32_IP = 'http://192.168.1.100' // Replace with ESP32's IP address
 const IS_DEV = process.env.NODE_ENV === 'development'
 
 async function fetchWithTimeout(url: string, options: RequestInit = {}, timeout = 5000) {

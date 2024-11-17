@@ -17,7 +17,7 @@ detection_results = {
 
 # Initialize the webcam
 # Try different indices if 1 doesn't work for webcam
-camera_index = 1
+camera_index = 0
 cap = cv2.VideoCapture(camera_index)
 
 # If the above doesn't work, try this:
